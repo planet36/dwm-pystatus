@@ -13,10 +13,6 @@ import threading
 import requests
 import socket
 
-# Local things
-import imap
-import player
-
 from Xlib import Xatom
 from Xlib.display import Display
 from collections import deque
@@ -50,7 +46,7 @@ def update_weather(weather, dt=300):
 
     APPID = '3e321f9414eaedbfab34983bda77a66e'  # 'borrowed' from awesomewm's lain library
     base_url = 'http://api.openweathermap.org/data/2.5/weather?'
-    city_id = '2757345' # Delft. Look yours up on openweathermap
+    city_id = '4167147' # Orlando. Look yours up on openweathermap
     url = base_url + "appid=" + APPID + "&id=" + city_id
 
     then = int(time.time())
@@ -147,8 +143,8 @@ def createweatherstatus(weather):
     else:
         windspeed += " m/s"
     status += city + " : " + \
-            "🌡 " + str(temp) + "C : "  \
-            "🎐 " + windspeed + " : 🧭 " + winddir + " : " + \
+            "Temp " + str(temp) + "C : "  \
+            "Wind " + windspeed + " : " + winddir + " : " + \
             icon + " " + description  + " : "
 
     return status
@@ -216,17 +212,23 @@ def main():
     display = Display()
     root = display.screen().root
 
-    # IMAP collection
-    mailbox = deque(maxlen=1)
-    m = threading.Thread(target=poll_inbox, args=(mailbox,))
-    m.daemon
-    m.start()
+    if 'imap' in sys.modules:
+        # IMAP collection
+        mailbox = deque(maxlen=1)
+        m = threading.Thread(target=poll_inbox, args=(mailbox,))
+        m.daemon
+        m.start()
+    else:
+        mailbox = None
 
-    # NowPlaying collection
-    nowplaying = deque(maxlen=1)
-    n = threading.Thread(target=poll_player, args=(nowplaying,))
-    n.daemon
-    n.start()
+    if 'player' in sys.modules:
+        # NowPlaying collection
+        nowplaying = deque(maxlen=1)
+        n = threading.Thread(target=poll_player, args=(nowplaying,))
+        n.daemon
+        n.start()
+    else:
+        nowplaying = [False]
 
     # Netstatus collection
     transfer_rate = deque(maxlen=1)
@@ -265,14 +267,14 @@ def main():
         status = ''
 
         if memtotal:
-            status += f"🧠 : {memused: >5}/{memtotal: >5} : "
+            status += f"Mem : {memused: >5}/{memtotal: >5} : "
         if swaptotal != 0:
-            status += f"🧪 : {swapused: >5}/{swaptotal: >5} : "
+            status += f"Swap : {swapused: >5}/{swaptotal: >5} : "
         if cpuload:
-            status += f"💻 : {cpupct} : "
+            status += f"CPU : {cpupct} : "
         if batstatus != -1:
-            status += f"🔋 : {batpct: >3}% ({batstatus: <11}) :"
-        status += f"🗓 {curtime}"
+            status += f"Battery : {batpct: >3}% ({batstatus: <11}) :"
+        status += f" {curtime}"
 
         # Bottom bar
         status += ';'
@@ -280,7 +282,7 @@ def main():
         if nic:
             status += f'{nic: <8}: '
         try:
-            status += '⬆: {0:>9.0f} kB/s ⬇: {1:>9.0f} kB/s : '.format(*transfer_rate[-1])
+            status += 'Tx: {0:>9.0f} kB/s Rx: {1:>9.0f} kB/s : '.format(*transfer_rate[-1])
         except IndexError as ex:
             pass
 
